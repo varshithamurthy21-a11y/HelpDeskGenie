@@ -10,6 +10,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 # =====================================================================
 # GLOBAL PERSISTENT MEMORY STORAGE
 # =====================================================================
+if "email_alerts" not in st.session_state:
+    st.session_state.email_alerts = []
 if "kb_store" not in st.session_state:
     st.session_state.kb_store = [
         {"id": "KB101", "title": "VPN Disconnection and Troubleshooting", "content": "If your Corporate VPN disconnects continuously, flush your DNS by running 'ipconfig /flushdns' in terminal. Verify UDP ports 4500 and 500 are open.", "category": "Networking", "source_link": "Internal Confluence"},
