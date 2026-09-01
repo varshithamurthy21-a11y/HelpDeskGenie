@@ -143,7 +143,17 @@ if st.session_state.user_role == "Administrator":
     available_modes.append("SecOps Dispatch Mailbox")
     available_modes.append("Iteration 6: Webhook Live Payload Monitor")
 
-mode = st.sidebar.selectbox("Navigation Panel", available_modes)
+# SAFE FILTER GUARD: If browser selection is cached with an unmapped string name, reset safely to index 0
+if "active_nav_mode" not in st.session_state:
+    st.session_state.active_nav_mode = available_modes[0]
+
+# Forces selection sync tracking across administrative role swaps
+try:
+    mode = st.sidebar.selectbox("Navigation Panel", available_modes, index=available_modes.index(st.session_state.active_nav_mode))
+except ValueError:
+    mode = st.sidebar.selectbox("Navigation Panel", available_modes, index=0)
+
+st.session_state.active_nav_mode = mode
 agent = AdvancedHelpDeskAgent()
 
 if mode == "Chat UI Interface":
@@ -155,12 +165,3 @@ if mode == "Chat UI Interface":
     if user_input := st.chat_input("Ask a question..."):
         st.session_state.messages.append({"role": "user", "content": user_input})
         with st.chat_message("user"): st.markdown(user_input)
-        with st.chat_message("assistant"):
-            response = agent.process_input(user_input, user_id=st.session_state.current_user_id)
-            st.markdown(response)
-        st.session_state.messages.append({"role": "assistant", "content": response})
-
-elif mode == "IT Admin Dashboard (Stretch Goal)":
-    st.title("IT Operations Command Dashboard")
-    df_tickets = pd.DataFrame(st.session_state.ticket_db)
-    col1, col2, col3 = st.columns(3)
