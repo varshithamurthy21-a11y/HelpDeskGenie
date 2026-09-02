@@ -90,6 +90,8 @@ class SemanticHelpDeskAgent:
 
 # Dashboard UI Config
 
+st.set_page_config(layout="wide")
+
 mode = st.sidebar.selectbox("Navigation Panel", [
     "Chat UI Interface", 
     "IT Admin Dashboard (Stretch Goal)",
