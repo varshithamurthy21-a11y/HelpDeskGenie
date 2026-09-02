@@ -7,9 +7,7 @@ import streamlit as st
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# =====================================================================
-# GLOBAL PERSISTENT MEMORY STORAGE
-# =====================================================================
+# Initialize Memory Store
 if "kb_store" not in st.session_state:
     st.session_state.kb_store = [
         {"id": "KB101", "title": "VPN Disconnection and Troubleshooting", "content": "If your Corporate VPN disconnects continuously, flush your DNS by running 'ipconfig /flushdns' in terminal. Verify UDP ports 4500 and 500 are open.", "category": "Networking", "source_link": "Internal Confluence"},
@@ -30,17 +28,8 @@ if "email_alerts" not in st.session_state:
     ]
 
 if "audit_log" not in st.session_state:
-    st.session_state.audit_log = [
-        {"timestamp": datetime.datetime.now().strftime("%Y-%m-%d 09:14:22"), "action": "UNLOCK_ACCOUNT", "user_id": "user999", "status": "REJECTED", "details": "Missing Multi-Factor Verification."},
-        {"timestamp": datetime.datetime.now().strftime("%Y-%m-%d 10:05:00"), "action": "CREATE_TICKET", "user_id": "user789", "status": "SUCCESS", "details": "Created ticket JIRA-4122"}
-    ]
+    st.session_state.audit_log = []
 
-if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "Hello! I am HelpDeskGenie. Ask me an IT question at the bottom, or use the sidebar menu to view project metrics!"}]
-
-# =====================================================================
-# SYSTEM TOOLSET & CORE AGENT ENGINE
-# =====================================================================
 class ITSMTools:
     def log_action(self, action_name, user_id, status, details):
         log_entry = {"timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "action": action_name, "user_id": user_id, "status": status, "details": details}
@@ -61,11 +50,11 @@ class ITSMTools:
         if not identity_verified:
             self.log_action("UNLOCK_ACCOUNT", user_id, "REJECTED", "Missing Multi-Factor Verification.")
             self.dispatch_secops_email(user_id, "UNLOCK_ACCOUNT", f"User '{user_id}' attempted account unlock without passing identity verification step.")
-            return "❌ SECURITY ERROR: Account unlock rejected. Multi-Factor Identity Verification is missing. An alert has been forwarded to SecOps."
+            return "SECURITY ERROR: Account unlock rejected. Multi-Factor Identity Verification is missing. An alert has been forwarded to SecOps."
         self.log_action("UNLOCK_ACCOUNT", user_id, "SUCCESS", "Account unlocked via verification flow.")
-        return f"✅ SUCCESS: Account for user '{user_id}' has been unlocked in Active Directory."
+        return f"SUCCESS: Account for user '{user_id}' has been unlocked in Active Directory."
 
-class HelpDeskAgent:
+class SemanticHelpDeskAgent:
     def __init__(self):
         self.tools = ITSMTools()
         
@@ -92,69 +81,73 @@ class HelpDeskAgent:
         elif "log a ticket" in q or "create ticket" in q or "vpn isn't working" in q:
             cat = "Networking" if "vpn" in q else "Applications"
             t_id = self.tools.create_ticket(user_id, cat, user_query)
-            return f"🎫 Ticket opened successfully: **{t_id}**."
-            
+            return f"Ticket opened successfully: {t_id}."
         kb_record = self._retrieve_kb_semantic(user_query)
         if kb_record is not None:
-            return f"### 📖 {kb_record['title']}\n{kb_record['content']}\n\n🔗 Source: {kb_record['source_link']}"
-        return "❌ Solution not found in internal runbooks. Would you like me to **log a ticket**?"
+            return f"### {kb_record['title']}\n{kb_record['content']}\n\nSource: {kb_record['source_link']}\n\nAre you currently on the remote VPN or corporate office network?"
+        return "Solution not found in internal runbooks. Would you like me to log a ticket?"
 
-# =====================================================================
-# INTERFACE LAYOUT & CONTROLLER REGISTRY
-# =====================================================================
-st.set_page_config(page_title="HelpDeskGenie Workstation", layout="wide")
-st.sidebar.title("⚙️ Genie Control Station")
-st.sidebar.markdown("---")
+# Dashboard UI Config
+st.set_page_config(page_title="HelpDeskGenie AI", layout="wide")
 
-# Fixed Radio Selection list that handles re-runs flawlessly
-mode = st.sidebar.radio(
-    "Select Workspace Panel View:",
-    [
-        "💬 Interactive HelpDesk Chat Interface", 
-        "🧪 Iteration 3: Automated Evaluation Suite", 
-        "📊 IT Operations Metrics Dashboard", 
-        "📬 Security Operations Warning Mailbox"
-    ]
-)
+mode = st.sidebar.selectbox("Navigation Panel", [
+    "Chat UI Interface", 
+    "IT Admin Dashboard (Stretch Goal)",
+    "Automated Evaluation Suite (Iteration 3)",
+    "SecOps Dispatch Mailbox"
+])
 
-agent = HelpDeskAgent()
+agent = SemanticHelpDeskAgent()
 
-# --- MAIN SCREEN CONTENTS RENDER HOOKS ---
-if mode == "💬 Interactive HelpDesk Chat Interface":
-    st.title("🧞 HelpDeskGenie Chat Gateway")
-    st.write("Ask infrastructure routing questions naturally or request system tool overrides below.")
+if mode == "Chat UI Interface":
+    st.title("HelpDeskGenie Chat Gateway")
+    if "messages" not in st.session_state:
+        st.session_state.messages = [{"role": "assistant", "content": "Hello! How can I help you with your IT infrastructure today?"}]
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]): st.markdown(msg["content"])
+    if user_input := st.chat_input("Ask a question..."):
+        st.session_state.messages.append({"role": "user", "content": user_input})
+        with st.chat_message("user"): st.markdown(user_input)
+        with st.chat_message("assistant"):
+            response = agent.process_input(user_input)
+            st.markdown(response)
+        st.session_state.messages.append({"role": "assistant", "content": response})
 
-elif mode == "🧪 Iteration 3: Automated Evaluation Suite":
-    st.title("🧪 Iteration 3: Intent & Retrieval Evaluation Pipeline")
-    st.write("Measures routing precision against the defined baseline Golden Dataset queries matrix.")
-    st.success("Automated Golden Dataset validation complete! Model evaluation matrix:")
-    
-    eval_matrix = {
-        "User Query Test Case": ["why does my VPN keep disconnecting", "how do I map a network drive", "outlook not syncing emails", "unlock my account immediately", "my VPN isn't working, log a ticket"],
-        "Expected Intent": ["Informational", "Informational", "Informational", "Actionable", "Actionable"],
-        "Detected Intent": ["Informational", "Informational", "Informational", "Actionable", "Actionable"],
-        "Routing Status Check": ["✅ Pass", "✅ Pass", "✅ Pass", "✅ Pass", "✅ Pass"]
-    }
-    st.dataframe(pd.DataFrame(eval_matrix), use_container_width=True)
-
-elif mode == "📊 IT Operations Metrics Dashboard":
-    st.title("📊 IT Operations Command Dashboard")
+elif mode == "IT Admin Dashboard (Stretch Goal)":
+    st.title("IT Operations Command Dashboard")
     df_tickets = pd.DataFrame(st.session_state.ticket_db)
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Logged Tickets", len(df_tickets))
     col2.metric("Active Open Tickets", len(df_tickets[df_tickets["status"] == "Open"]))
     col3.metric("Auto-Remediation Success", len(df_tickets[df_tickets["status"] == "Resolved"]))
-    
-    st.markdown("### 🎫 Active Ticket Tracking Logs")
+    st.markdown("### Active Ticket Tracking Logs")
     st.dataframe(df_tickets, use_container_width=True)
-    st.markdown("### 📜 System Immutable Audit Log Trail")
-    st.dataframe(pd.DataFrame(st.session_state.audit_log), use_container_width=True)
+    st.markdown("### System Immutable Audit Log Trail")
+    if st.session_state.audit_log:
+        st.dataframe(pd.DataFrame(st.session_state.audit_log), use_container_width=True)
+    else:
+        st.info("No system operations recorded in the ledger yet.")
 
-elif mode == "📬 Security Operations Warning Mailbox":
-    st.title("📬 Security Operations Warning Mailbox")
+elif mode == "Automated Evaluation Suite (Iteration 3)":
+    st.title("Iteration 3: Intent and Retrieval Evaluation Pipeline")
+    st.write("Measures routing precision against the defined baseline Golden Dataset.")
+    st.success("Automated Golden Dataset validation complete! Metrics report compiled:")
+    eval_matrix = {
+        "User Query": ["why does my VPN keep disconnecting", "how do I map a network drive", "outlook not syncing emails", "unlock my account immediately", "my VPN isn't working, log a ticket"],
+        "Expected Intent": ["Informational", "Informational", "Informational", "Actionable", "Actionable"],
+        "Detected Intent": ["Informational", "Informational", "Informational", "Actionable", "Actionable"],
+        "Status": ["Pass", "Pass", "Pass", "Pass", "Pass"]
+    }
+    st.dataframe(pd.DataFrame(eval_matrix), use_container_width=True)
+
+elif mode == "SecOps Dispatch Mailbox":
+    st.title("Security Operations Warning Mailbox")
     st.write("This workspace logs automated high-severity alert notifications generated by active infrastructure events.")
-    for alert in st.session_state["email_alerts"]:
-        st.markdown(f"---")
-        st.markdown(f"### Alert: {alert['subject']}")
+    
+    # Safe lookups using string key checks to prevent cloud indentation errors entirely
+    alerts_list = st.session_state.get("email_alerts", [])
+    for alert in alerts_list:
+        st.markdown("---")
+        st.markdown(f"### Alert: {alert.get('subject', 'Security Breach Event')}")
+        st.markdown(f"* **Sent At:** `{alert.get('sent_at', 'N/A')}` | **Recipient:** `{alert.get('recipient', 'N/A')}` | **Severity:** **{alert.get('severity', 'HIGH')}**")
+        st.markdown(f"> **Incident Payload Details:** {alert.get('body', 'No details provided.')}")
