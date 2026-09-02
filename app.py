@@ -8,7 +8,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 # =====================================================================
-# GLOBAL PERSISTENT MEMORY STORAGE (ITERATIONS 1 & 2 DATA BASELINE)
+# GLOBAL PERSISTENT MEMORY STORAGE
 # =====================================================================
 if "kb_store" not in st.session_state:
     st.session_state.kb_store = [
@@ -34,9 +34,6 @@ if "audit_log" not in st.session_state:
         {"timestamp": datetime.datetime.now().strftime("%Y-%m-%d 09:14:22"), "action": "UNLOCK_ACCOUNT", "user_id": "user999", "status": "REJECTED", "details": "Missing Multi-Factor Verification."},
         {"timestamp": datetime.datetime.now().strftime("%Y-%m-%d 10:05:00"), "action": "CREATE_TICKET", "user_id": "user789", "status": "SUCCESS", "details": "Created ticket JIRA-4122"}
     ]
-
-if "active_page" not in st.session_state:
-    st.session_state.active_page = "Chat"
 
 # =====================================================================
 # SYSTEM TOOLSET & CORE AGENT ENGINE
@@ -100,31 +97,29 @@ class HelpDeskAgent:
         return "❌ Solution not found in internal runbooks. Would you like me to **log a ticket**?"
 
 # =====================================================================
-# SIDEBAR NAVIGATION
+# STABLE SIDEBAR RADIO NAVIGATION LAYER
 # =====================================================================
-st.set_page_config(page_title="HelpDeskGenie Suite", layout="wide")
-st.sidebar.title("Genie Control Station")
+st.set_page_config(page_title="HelpDeskGenie Workstation", layout="wide")
+st.sidebar.title("⚙️ Genie Control Station")
 st.sidebar.markdown("---")
 
-if st.sidebar.button("💬 Chat UI Interface (Iter 1 & 2)", use_container_width=True):
-    st.session_state.active_page = "Chat"
-
-if st.sidebar.button("🧪 Evaluation Suite (Iter 3)", use_container_width=True):
-    st.session_state.active_page = "Eval"
-
-if st.sidebar.button("📊 IT Support Dashboard", use_container_width=True):
-    st.session_state.active_page = "Dashboard"
-
-if st.sidebar.button("📬 SecOps Alert Mailbox", use_container_width=True):
-    st.session_state.active_page = "SecOps"
+# ⚡ Foolproof radio navigation option list that natively holds state memory ⚡
+mode = st.sidebar.radio(
+    "Select Workstation Page:",
+    [
+        "💬 Chat UI Interface (Iter 1 & 2)", 
+        "🧪 Evaluation Suite (Iter 3)", 
+        "📊 IT Support Dashboard", 
+        "📬 SecOps Alert Mailbox"
+    ]
+)
 
 agent = HelpDeskAgent()
-mode = st.session_state.active_page
 
 # =====================================================================
-# PAGE ROUTING CONTROLLER
+# RENDERING PAGE CONTROLLER
 # =====================================================================
-if mode == "Chat":
+if mode == "💬 Chat UI Interface (Iter 1 & 2)":
     st.title("🧞 HelpDeskGenie Chat Gateway")
     if "messages" not in st.session_state:
         st.session_state.messages = [{"role": "assistant", "content": "Hello! How can I help you with your IT infrastructure today?"}]
@@ -138,12 +133,11 @@ if mode == "Chat":
             st.markdown(response)
         st.session_state.messages.append({"role": "assistant", "content": response})
 
-elif mode == "Eval":
+elif mode == "🧪 Evaluation Suite (Iter 3)":
     st.title("🧪 Iteration 3: Intent & Retrieval Evaluation Pipeline")
     st.write("Measures routing precision against the defined baseline Golden Dataset queries matrix.")
     st.success("Automated Golden Dataset validation complete! Model evaluation matrix:")
     
-    # ⚡ HOOKED UP VIA DIRECT PANDAS DATAFRAME MATRIX TO ERASE TYPO ERROS ⚡
     eval_matrix = {
         "User Query Test Case": [
             "why does my VPN keep disconnecting",
@@ -158,9 +152,15 @@ elif mode == "Eval":
     }
     st.dataframe(pd.DataFrame(eval_matrix), use_container_width=True)
 
-elif mode == "Dashboard":
+elif mode == "📊 IT Support Dashboard":
     st.title("📊 IT Operations Command Dashboard")
     df_tickets = pd.DataFrame(st.session_state.ticket_db)
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Logged Tickets", len(df_tickets))
     col2.metric("Active Open Tickets", len(df_tickets[df_tickets["status"] == "Open"]))
+    col3.metric("Auto-Remediation Success", len(df_tickets[df_tickets["status"] == "Resolved"]))
+    
+    st.markdown("### 🎫 Active Ticket Tracking Logs")
+    st.dataframe(df_tickets, use_container_width=True)
+    st.markdown("### 📜 System Immutable Audit Log Trail")
+    st.dataframe(pd.DataFrame(st.session_state.audit_log), use_container_width=True)
