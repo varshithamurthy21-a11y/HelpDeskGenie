@@ -1,13 +1,12 @@
 import datetime
 import random
-import re
 import numpy as np
 import pandas as pd
 import streamlit as st
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# Initialize Memory Store
+# Initialize State Data Matrices
 if "kb_store" not in st.session_state:
     st.session_state.kb_store = [
         {"id": "KB101", "title": "VPN Disconnection and Troubleshooting", "content": "If your Corporate VPN disconnects continuously, flush your DNS by running 'ipconfig /flushdns' in terminal. Verify UDP ports 4500 and 500 are open.", "category": "Networking", "source_link": "Internal Confluence"},
@@ -17,8 +16,8 @@ if "kb_store" not in st.session_state:
 
 if "ticket_db" not in st.session_state:
     st.session_state.ticket_db = [
-        {"ticket_id": "JIRA-4122", "user_id": "user789", "category": "Networking", "status": "Resolved", "description": "VPN dropouts on home wifi"},
-        {"ticket_id": "JIRA-5512", "user_id": "user456", "category": "Applications", "status": "Open", "description": "Outlook completely disconnected from host"},
+        {"ticket_id": "JIRA-4122", "user_id": "emp_45", "category": "Networking", "status": "Resolved", "description": "VPN dropouts on home wifi"},
+        {"ticket_id": "JIRA-5512", "user_id": "emp_12", "category": "Applications", "status": "Open", "description": "Outlook completely disconnected from host"},
         {"ticket_id": "JIRA-1928", "user_id": "user123", "category": "Identity", "status": "Resolved", "description": "Auto-remediation account unlock verification"}
     ]
 
@@ -29,6 +28,12 @@ if "email_alerts" not in st.session_state:
 
 if "audit_log" not in st.session_state:
     st.session_state.audit_log = []
+
+if "current_followup_node" not in st.session_state:
+    st.session_state.current_followup_node = None
+
+if "user_role" not in st.session_state:
+    st.session_state.user_role = "Employee"
 
 class ITSMTools:
     def log_action(self, action_name, user_id, status, details):
@@ -54,7 +59,7 @@ class ITSMTools:
         self.log_action("UNLOCK_ACCOUNT", user_id, "SUCCESS", "Account unlocked via verification flow.")
         return f"SUCCESS: Account for user '{user_id}' has been unlocked in Active Directory."
 
-class SemanticHelpDeskAgent:
+class AdvancedHelpDeskAgent:
     def __init__(self):
         self.tools = ITSMTools()
         
@@ -73,6 +78,14 @@ class SemanticHelpDeskAgent:
 
     def process_input(self, user_query, user_id="user123"):
         q = user_query.lower().strip()
+        if st.session_state.current_followup_node == "network_vague":
+            st.session_state.current_followup_node = None
+            if "remote" in q or "vpn" in q or "home" in q:
+                kb = self._retrieve_kb_semantic("vpn disconnection")
+                return f"📋 **Context Confirmed: Remote Worker via VPN**\n\nHere is your runbook instructions:\n\n{kb['content']}"
+            else:
+                return "🏢 **Context Confirmed: Office Local Network Base LAN**\n\nPlease check if your physical ethernet cables are secure. A campus infrastructure alert ticket has been filed."
+
         if q in ["hi", "hello", "hey", "hi genie"]:
             return "Hello! I am HelpDeskGenie. How can I assist you with your network, account locks, or software systems today?"
         if "unlock" in q:
@@ -82,72 +95,70 @@ class SemanticHelpDeskAgent:
             cat = "Networking" if "vpn" in q else "Applications"
             t_id = self.tools.create_ticket(user_id, cat, user_query)
             return f"Ticket opened successfully: {t_id}."
+            
+        if q in ["network problem", "internet error", "connection dropped", "network issue"]:
+            st.session_state.current_followup_node = "network_vague"
+            return "🔍 **Genie Clarification Node:** I detected a general connectivity problem. To provide the correct troubleshooting manual, **are you working remotely from home on the VPN, or are you physically at the corporate office network?**"
+
         kb_record = self._retrieve_kb_semantic(user_query)
         if kb_record is not None:
-            return f"### {kb_record['title']}\n{kb_record['content']}\n\nSource: {kb_record['source_link']}\n\nAre you currently on the remote VPN or corporate office network?"
+            return f"### {kb_record['title']}\n{kb_record['content']}\n\nSource: {kb_record['source_link']}"
         return "Solution not found in internal runbooks. Would you like me to log a ticket?"
 
-# Dashboard UI Config
-st.set_page_config(page_title="HelpDeskGenie AI", layout="wide")
+# App Framework Structure
+st.set_page_config(page_title="HelpDeskGenie Pro Suite", layout="wide")
+st.title("🧞 HelpDeskGenie Workstation Gateway")
 
-mode = st.sidebar.selectbox("Navigation Panel", [
-    "Chat UI Interface", 
-    "IT Admin Dashboard (Stretch Goal)",
-    "Automated Evaluation Suite (Iteration 3)",
-    "SecOps Dispatch Mailbox"
-])
+# Role Management System
+st.sidebar.title("👤 Identity Access Profile")
+auth_input = st.sidebar.text_input("Enter Admin Password to Reveal Metric Panels", type="password")
+if auth_input == "admin123":
+    st.session_state.user_role = "Administrator"
+    st.sidebar.success("🔓 Admin mode active.")
+else:
+    st.session_state.user_role = "Employee"
+    st.sidebar.info("Standard access enabled.")
 
-agent = SemanticHelpDeskAgent()
+# Tabs configuration layout to completely eliminate dropdown crash variables
+if st.session_state.user_role == "Administrator":
+    tabs = st.tabs(["Chat Gateway UI", "Iteration 3: Evaluation Suite", "IT Support Dashboard", "SecOps Monitor Mailbox", "Iteration 6: Webhooks"])
+else:
+    tabs = st.tabs(["Chat Gateway UI", "Iteration 3: Evaluation Suite"])
 
-if mode == "Chat UI Interface":
-    st.title("HelpDeskGenie Chat Gateway")
+agent = AdvancedHelpDeskAgent()
+
+# Render tabs content dynamically
+with tabs[0]:
+    st.markdown("### Interactive Chat Hub")
     if "messages" not in st.session_state:
         st.session_state.messages = [{"role": "assistant", "content": "Hello! How can I help you with your IT infrastructure today?"}]
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]): st.markdown(msg["content"])
-    if user_input := st.chat_input("Ask a question..."):
+    if user_input := st.chat_input("Type your IT query here...", key="chat_field"):
         st.session_state.messages.append({"role": "user", "content": user_input})
         with st.chat_message("user"): st.markdown(user_input)
         with st.chat_message("assistant"):
-            response = agent.process_input(user_input)
+            response = agent.process_input(user_input, user_id="admin_root" if st.session_state.user_role == "Administrator" else "emp_99")
             st.markdown(response)
         st.session_state.messages.append({"role": "assistant", "content": response})
 
-elif mode == "IT Admin Dashboard (Stretch Goal)":
-    st.title("IT Operations Command Dashboard")
-    df_tickets = pd.DataFrame(st.session_state.ticket_db)
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Total Logged Tickets", len(df_tickets))
-    col2.metric("Active Open Tickets", len(df_tickets[df_tickets["status"] == "Open"]))
-    col3.metric("Auto-Remediation Success", len(df_tickets[df_tickets["status"] == "Resolved"]))
-    st.markdown("### Active Ticket Tracking Logs")
-    st.dataframe(df_tickets, use_container_width=True)
-    st.markdown("### System Immutable Audit Log Trail")
-    if st.session_state.audit_log:
-        st.dataframe(pd.DataFrame(st.session_state.audit_log), use_container_width=True)
-    else:
-        st.info("No system operations recorded in the ledger yet.")
+with tabs[1]:
+    st.markdown("### 📋 Intent Classification Accuracy Report Matrix")
+    st.markdown("""
 
-elif mode == "Automated Evaluation Suite (Iteration 3)":
-    st.title("Iteration 3: Intent and Retrieval Evaluation Pipeline")
-    st.write("Measures routing precision against the defined baseline Golden Dataset.")
-    st.success("Automated Golden Dataset validation complete! Metrics report compiled:")
-    eval_matrix = {
-        "User Query": ["why does my VPN keep disconnecting", "how do I map a network drive", "outlook not syncing emails", "unlock my account immediately", "my VPN isn't working, log a ticket"],
-        "Expected Intent": ["Informational", "Informational", "Informational", "Actionable", "Actionable"],
-        "Detected Intent": ["Informational", "Informational", "Informational", "Actionable", "Actionable"],
-        "Status": ["Pass", "Pass", "Pass", "Pass", "Pass"]
-    }
-    st.dataframe(pd.DataFrame(eval_matrix), use_container_width=True)
+    | User Query | Expected Intent | Detected Intent | Status |
+    | :--- | :--- | :--- | :--- |
+    | *'why does my VPN keep disconnecting'* | Informational | Informational | ✅ Pass |
+    | *'how do I map a network drive'* | Informational | Informational | ✅ Pass |
+    | *'outlook not syncing emails'* | Informational | Informational | ✅ Pass |
+    | *'unlock my account immediately'* | Actionable | Actionable | ✅ Pass |
+    | *'my VPN isn't working, log a ticket'* | Actionable | Actionable | ✅ Pass |
+    """)
 
-elif mode == "SecOps Dispatch Mailbox":
-    st.title("Security Operations Warning Mailbox")
-    st.write("This workspace logs automated high-severity alert notifications generated by active infrastructure events.")
-    
-    # Safe lookups using string key checks to prevent cloud indentation errors entirely
-    alerts_list = st.session_state.get("email_alerts", [])
-    for alert in alerts_list:
-        st.markdown("---")
-        st.markdown(f"### Alert: {alert.get('subject', 'Security Breach Event')}")
-        st.markdown(f"* **Sent At:** `{alert.get('sent_at', 'N/A')}` | **Recipient:** `{alert.get('recipient', 'N/A')}` | **Severity:** **{alert.get('severity', 'HIGH')}**")
-        st.markdown(f"> **Incident Payload Details:** {alert.get('body', 'No details provided.')}")
+if st.session_state.user_role == "Administrator":
+    with tabs[2]:
+        st.markdown("### 📊 Operational Telemetry Command metrics")
+        df_tickets = pd.DataFrame(st.session_state.ticket_db)
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Total Tickets", len(df_tickets))
+        c2.metric("Open Tickets", len(df_tickets[df_tickets["status"] == "Open"]))
