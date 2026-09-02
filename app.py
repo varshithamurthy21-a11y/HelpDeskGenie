@@ -89,7 +89,6 @@ class SemanticHelpDeskAgent:
         return "Solution not found in internal runbooks. Would you like me to log a ticket?"
 
 # Dashboard UI Config
-st.set_page_config(page_title="HelpDeskGenie AI", layout="wide")
 
 mode = st.sidebar.selectbox("Navigation Panel", [
     "Chat UI Interface", 
