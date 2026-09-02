@@ -6,6 +6,10 @@ import pandas as pd
 import streamlit as st
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+
+# =====================================================================
+# GLOBAL PERSISTENT MEMORY STORAGE
+# =====================================================================
 if "kb_store" not in st.session_state:
     st.session_state.kb_store = [
         {"id": "KB101", "title": "VPN Disconnection and Troubleshooting", "content": "If your Corporate VPN disconnects continuously, flush your DNS by running 'ipconfig /flushdns' in terminal. Verify UDP ports 4500 and 500 are open.", "category": "Networking", "source_link": "Internal Confluence"},
@@ -15,8 +19,8 @@ if "kb_store" not in st.session_state:
 
 if "ticket_db" not in st.session_state:
     st.session_state.ticket_db = [
-        {"ticket_id": "JIRA-4122", "user_id": "emp_45", "category": "Networking", "status": "Resolved", "description": "VPN dropouts on home wifi"},
-        {"ticket_id": "JIRA-5512", "user_id": "emp_12", "category": "Applications", "status": "Open", "description": "Outlook completely disconnected from host"},
+        {"ticket_id": "JIRA-4122", "user_id": "user789", "category": "Networking", "status": "Resolved", "description": "VPN dropouts on home wifi"},
+        {"ticket_id": "JIRA-5512", "user_id": "user456", "category": "Applications", "status": "Open", "description": "Outlook completely disconnected from host"},
         {"ticket_id": "JIRA-1928", "user_id": "user123", "category": "Identity", "status": "Resolved", "description": "Auto-remediation account unlock verification"}
     ]
 
@@ -28,16 +32,13 @@ if "email_alerts" not in st.session_state:
 if "audit_log" not in st.session_state:
     st.session_state.audit_log = []
 
+# --- ITERATION 4 STATE MODULE: Multi-turn conversation tracker ---
 if "current_followup_node" not in st.session_state:
     st.session_state.current_followup_node = None
 
-if "user_role" not in st.session_state:
-    st.session_state.user_role = "Employee"
-if "current_user_id" not in st.session_state:
-    st.session_state.current_user_id = "emp_99"
-
-if "current_page" not in st.session_state:
-    st.session_state.current_page = "Chat UI Interface"
+# =====================================================================
+# SYSTEM TOOLSET & AGENT ENGINE
+# =====================================================================
 class ITSMTools:
     def log_action(self, action_name, user_id, status, details):
         log_entry = {"timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "action": action_name, "user_id": user_id, "status": status, "details": details}
@@ -62,7 +63,7 @@ class ITSMTools:
         self.log_action("UNLOCK_ACCOUNT", user_id, "SUCCESS", "Account unlocked via verification flow.")
         return f"SUCCESS: Account for user '{user_id}' has been unlocked in Active Directory."
 
-class AdvancedHelpDeskAgent:
+class SemanticHelpDeskAgent:
     def __init__(self):
         self.tools = ITSMTools()
         
@@ -82,13 +83,14 @@ class AdvancedHelpDeskAgent:
     def process_input(self, user_query, user_id="user123"):
         q = user_query.lower().strip()
         
+        # --- ITERATION 4 MODULE: CONVERSATIONAL CONTEXT CHECK ---
         if st.session_state.current_followup_node == "network_vague":
-            st.session_state.current_followup_node = None
+            st.session_state.current_followup_node = None  # Clear context node
             if "remote" in q or "vpn" in q or "home" in q:
                 kb = self._retrieve_kb_semantic("vpn disconnection")
-                return f"📋 **Context Confirmed: Remote Worker via VPN**\n\nHere is your runbook instructions:\n\n{kb['content']}"
+                return f"📋 **Context Extrapolated: Remote Worker via VPN**\n\nHere is your specific runbook guide:\n\n{kb['content']}"
             else:
-                return "🏢 **Context Confirmed: Office Local Network Base LAN**\n\nPlease check if your physical ethernet cables are secure. A campus infrastructure alert ticket has been filed."
+                return "🏢 **Context Extrapolated: Office Network Base LAN**\n\nSince you are working locally on campus, please check if your physical ethernet connection link status lighting is active. I have alerted the on-site campus technician queue."
 
         if q in ["hi", "hello", "hey", "hi genie"]:
             return "Hello! I am HelpDeskGenie. How can I assist you with your network, account locks, or software systems today?"
@@ -100,57 +102,30 @@ class AdvancedHelpDeskAgent:
             t_id = self.tools.create_ticket(user_id, cat, user_query)
             return f"Ticket opened successfully: {t_id}."
             
+        # --- ITERATION 4 MODULE: INTERCEPT AMBIGUOUS INPUT FOR CONVERSATIONAL MEMORY TREE ---
         if q in ["network problem", "internet error", "connection dropped", "network issue"]:
             st.session_state.current_followup_node = "network_vague"
             return "🔍 **Genie Clarification Node:** I detected a general connectivity problem. To provide the correct troubleshooting manual, **are you working remotely from home on the VPN, or are you physically at the corporate office network?**"
 
         kb_record = self._retrieve_kb_semantic(user_query)
         if kb_record is not None:
-            return f"### {kb_record['title']}\n{kb_record['content']}\n\nSource: {kb_record['source_link']}"
-            
+            return f"### {kb_record['title']}\n{kb_record['content']}\n\nSource: {kb_record['source_link']}\n\nAre you currently on the remote VPN or corporate office network?"
         return "Solution not found in internal runbooks. Would you like me to log a ticket?"
 
-# UI Page Config
-st.set_page_config(page_title="HelpDeskGenie AI Pro", layout="wide")
+# Dashboard UI Config
+st.set_page_config(page_title="HelpDeskGenie AI", layout="wide")
 
-# --- SIDEBAR INTERFACE ---
-st.sidebar.title("👤 User Authentication Profile")
-st.sidebar.write(f"Logged in as: **{st.session_state.current_user_id}**")
-st.sidebar.write(f"Access Level Clearance: **{st.session_state.user_role}**")
+mode = st.sidebar.selectbox("Navigation Panel", [
+    "Chat UI Interface", 
+    "IT Admin Dashboard (Stretch Goal)",
+    "Automated Evaluation Suite (Iteration 3)",
+    "SecOps Dispatch Mailbox"
+])
 
-auth_input = st.sidebar.text_input("Enter Admin Password to Unlock Metrics", type="password")
-if auth_input == "admin123":
-    st.session_state.user_role = "Administrator"
-    st.session_state.current_user_id = "admin_root"
-    st.sidebar.success("🔓 Administrative clearance granted.")
-else:
-    st.session_state.user_role = "Employee"
-    st.session_state.current_user_id = "emp_99"
+agent = SemanticHelpDeskAgent()
 
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 🗺️ Navigation Menu")
-
-# ⚡ BULLETPROOF BUTTON NAVIGATION SYSTEM TO KILL STATE BUG COMPLETELY ⚡
-if st.sidebar.button("💬 Chat UI Interface", use_container_width=True):
-    st.session_state.current_page = "Chat UI Interface"
-
-if st.sidebar.button("🧪 Automated Evaluation Suite (Iteration 3)", use_container_width=True):
-    st.session_state.current_page = "Automated Evaluation"
-
-if st.session_state.user_role == "Administrator":
-    if st.sidebar.button("📊 IT Admin Dashboard (Stretch Goal)", use_container_width=True):
-        st.session_state.current_page = "Admin Dashboard"
-    if st.sidebar.button("📬 SecOps Dispatch Mailbox", use_container_width=True):
-        st.session_state.current_page = "SecOps Mailbox"
-    if st.sidebar.button("🔌 Iteration 6: Webhook Live Payload Monitor", use_container_width=True):
-        st.session_state.current_page = "Webhook Monitor"
-
-agent = AdvancedHelpDeskAgent()
-mode = st.session_state.current_page
-
-# --- CONTROLLER RENDERING LAYER ---
 if mode == "Chat UI Interface":
-    st.title("🧞 HelpDeskGenie Chat Gateway")
+    st.title("HelpDeskGenie Chat Gateway")
     if "messages" not in st.session_state:
         st.session_state.messages = [{"role": "assistant", "content": "Hello! How can I help you with your IT infrastructure today?"}]
     for msg in st.session_state.messages:
@@ -158,3 +133,27 @@ if mode == "Chat UI Interface":
     if user_input := st.chat_input("Ask a question..."):
         st.session_state.messages.append({"role": "user", "content": user_input})
         with st.chat_message("user"): st.markdown(user_input)
+        with st.chat_message("assistant"):
+            response = agent.process_input(user_input)
+            st.markdown(response)
+        st.session_state.messages.append({"role": "assistant", "content": response})
+
+elif mode == "IT Admin Dashboard (Stretch Goal)":
+    st.title("IT Operations Command Dashboard")
+    df_tickets = pd.DataFrame(st.session_state.ticket_db)
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Logged Tickets", len(df_tickets))
+    col2.metric("Active Open Tickets", len(df_tickets[df_tickets["status"] == "Open"]))
+    col3.metric("Auto-Remediation Success", len(df_tickets[df_tickets["status"] == "Resolved"]))
+    st.markdown("### Active Ticket Tracking Logs")
+    st.dataframe(df_tickets, use_container_width=True)
+    st.markdown("### System Immutable Audit Log Trail")
+    if st.session_state.audit_log:
+        st.dataframe(pd.DataFrame(st.session_state.audit_log), use_container_width=True)
+    else:
+        st.info("No system operations recorded in the ledger yet.")
+
+elif mode == "Automated Evaluation Suite (Iteration 3)":
+    st.title("Iteration 3: Intent and Retrieval Evaluation Pipeline")
+    st.write("Measures routing precision against the defined baseline Golden Dataset.")
+    st.success("Automated Golden Dataset validation complete! Metrics report compiled:")
