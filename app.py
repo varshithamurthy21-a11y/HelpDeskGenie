@@ -137,9 +137,24 @@ agent = SemanticHelpDeskAgent()
 if mode == "Chat UI Interface":
     st.title("静态 🧞 HelpDeskGenie Chat Gateway")
     st.caption("Active Capabilities: Semantic Confluence RAG Search (Iter 1) & Self-Service Compliance Tools (Iter 2)")
+    
+    # Render Message History Trace
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
+            
+    # Interactive User Text Input Area Block
+    if user_prompt := st.chat_input("Ask HelpDeskGenie a question..."):
+        with st.chat_message("user"):
+            st.markdown(user_prompt)
+        st.session_state.messages.append({"role": "user", "content": user_prompt})
+        
+        # Invoke Agent Inference
+        bot_response = agent.process_input(user_prompt, user_id=current_user_id)
+        
+        with st.chat_message("assistant"):
+            st.markdown(bot_response)
+        st.session_state.messages.append({"role": "assistant", "content": bot_response})
 
 elif mode == "IT Admin Dashboard (Stretch Goal)":
     st.title("📊 IT Operations Command Dashboard")
@@ -157,16 +172,3 @@ elif mode == "Automated Evaluation Suite (Iteration 3)":
     st.title("Iteration 3: Intent and Retrieval Evaluation Pipeline")
     st.write("Measures routing precision against the defined baseline Golden Dataset.")
     st.success("Automated Golden Dataset validation complete! Metrics report compiled:")
-    st.markdown("""
-
-    | User Query | Expected Intent | Detected Intent | Status |
-    | :--- | :--- | :--- | :--- |
-    | *'why does my VPN keep disconnecting'* | Informational | Informational | ✅ Pass |
-    | *'how do I map a network drive'* | Informational | Informational | ✅ Pass |
-    | *'outlook not syncing emails'* | Informational | Informational | ✅ Pass |
-    | *'unlock my account immediately'* | Actionable | Actionable | ✅ Pass |
-    | *'my VPN isn't working, log a ticket'* | Actionable | Actionable | ✅ Pass |
-    """)
-
-elif mode == "SecOps Dispatch Mailbox":
-    st.title("Security Operations Warning Mailbox")
