@@ -7,35 +7,47 @@ import streamlit as st
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
-# Initialize Memory Store Databases
-if "kb_store" not in st.session_state:
-    st.session_state.kb_store = [
-        {"id": "KB101", "title": "VPN Disconnection and Troubleshooting", "content": "If your Corporate VPN disconnects continuously, flush your DNS by running 'ipconfig /flushdns' in terminal. Verify UDP ports 4500 and 500 are open.", "category": "Networking", "source_link": "Internal Confluence"},
-        {"id": "KB102", "title": "Mapping Corporate Network Drives", "content": "Open File Explorer, select 'This PC' -> 'Map network drive'. Input path '\\\\storage.internal\\shared\\departments'. Active VPN connection is required.", "category": "Storage", "source_link": "Internal Confluence"},
-        {"id": "KB103", "title": "Outlook Exchange Sync Issues", "content": "Check network connection. Go to File -> Account Settings -> Reset Account. Force rebuilding local OST file data.", "category": "Applications", "source_link": "Internal Confluence"}
-    ]
+# Dashboard Setup Configuration (MUST be called first before anything else)
+st.set_page_config(page_title="HelpDeskGenie AI Pro", layout="wide")
 
-if "ticket_db" not in st.session_state:
-    st.session_state.ticket_db = [
-        {"ticket_id": "JIRA-4122", "user_id": "user789", "category": "Networking", "status": "Resolved", "description": "VPN dropouts on home wifi"},
-        {"ticket_id": "JIRA-5512", "user_id": "user456", "category": "Applications", "status": "Open", "description": "Outlook completely disconnected from host"},
-        {"ticket_id": "JIRA-1928", "user_id": "user123", "category": "Identity", "status": "Resolved", "description": "Auto-remediation account unlock verification"}
-    ]
+# =====================================================================
+# 🛠️ BULLETPROOF GLOBAL STATE INITIALIZATION
+# =====================================================================
+def init_session_states():
+    if "kb_store" not in st.session_state:
+        st.session_state.kb_store = [
+            {"id": "KB101", "title": "VPN Disconnection and Troubleshooting", "content": "If your Corporate VPN disconnects continuously, flush your DNS by running 'ipconfig /flushdns' in terminal. Verify UDP ports 4500 and 500 are open.", "category": "Networking", "source_link": "Internal Confluence"},
+            {"id": "KB102", "title": "Mapping Corporate Network Drives", "content": "Open File Explorer, select 'This PC' -> 'Map network drive'. Input path '\\\\storage.internal\\shared\\departments'. Active VPN connection is required.", "category": "Storage", "source_link": "Internal Confluence"},
+            {"id": "KB103", "title": "Outlook Exchange Sync Issues", "content": "Check network connection. Go to File -> Account Settings -> Reset Account. Force rebuilding local OST file data.", "category": "Applications", "source_link": "Internal Confluence"}
+        ]
 
-if "email_alerts" not in st.session_state:
-    st.session_state["email_alerts"] = [
-        {"sent_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "recipient": "secops-alerts@company.internal", "severity": "CRITICAL HIGH", "subject": "SECURITY VIOLATION: UNLOCK_ACCOUNT Attempt blocked", "body": "The gate controller blocked an unauthorized token request. Context: User tried to bypass AD security gate without providing a valid identity passcode token."}
-    ]
+    if "ticket_db" not in st.session_state:
+        st.session_state.ticket_db = [
+            {"ticket_id": "JIRA-4122", "user_id": "user789", "category": "Networking", "status": "Resolved", "description": "VPN dropouts on home wifi"},
+            {"ticket_id": "JIRA-5512", "user_id": "user456", "category": "Applications", "status": "Open", "description": "Outlook completely disconnected from host"},
+            {"ticket_id": "JIRA-1928", "user_id": "user123", "category": "Identity", "status": "Resolved", "description": "Auto-remediation account unlock verification"}
+        ]
 
-if "audit_log" not in st.session_state:
-    st.session_state.audit_log = [
-        {"timestamp": datetime.datetime.now().strftime("%Y-%m-%d 09:14:22"), "action": "UNLOCK_ACCOUNT", "user_id": "user999", "status": "REJECTED", "details": "Missing Multi-Factor Verification."},
-        {"timestamp": datetime.datetime.now().strftime("%Y-%m-%d 10:05:00"), "action": "CREATE_TICKET", "user_id": "user789", "status": "SUCCESS", "details": "Created ticket JIRA-4122"}
-    ]
+    if "email_alerts" not in st.session_state:
+        st.session_state["email_alerts"] = [
+            {"sent_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "recipient": "secops-alerts@company.internal", "severity": "CRITICAL HIGH", "subject": "SECURITY VIOLATION: UNLOCK_ACCOUNT Attempt blocked", "body": "The gate controller blocked an unauthorized token request. Context: User tried to bypass AD security gate without providing a valid identity passcode token."}
+        ]
 
-if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "Welcome back! How can I help you with your IT infrastructure today?"}]
+    if "audit_log" not in st.session_state:
+        st.session_state.audit_log = [
+            {"timestamp": datetime.datetime.now().strftime("%Y-%m-%d 09:14:22"), "action": "UNLOCK_ACCOUNT", "user_id": "user999", "status": "REJECTED", "details": "Missing Multi-Factor Verification."},
+            {"timestamp": datetime.datetime.now().strftime("%Y-%m-%d 10:05:00"), "action": "CREATE_TICKET", "user_id": "user789", "status": "SUCCESS", "details": "Created ticket JIRA-4122"}
+        ]
 
+    if "messages" not in st.session_state:
+        st.session_state.messages = [{"role": "assistant", "content": "Welcome back! How can I help you with your IT infrastructure today?"}]
+
+# Force state checking immediately
+init_session_states()
+
+# =====================================================================
+# 🤖 BACKEND CLASS SYSTEM ENGINES
+# =====================================================================
 class ITSMTools:
     def log_action(self, action_name, user_id, status, details):
         log_entry = {"timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "action": action_name, "user_id": user_id, "status": status, "details": details}
@@ -93,9 +105,6 @@ class SemanticHelpDeskAgent:
             return f"### {kb_record['title']}\n{kb_record['content']}\n\n🔗 Source: {kb_record['source_link']}"
         return "❌ Solution not found in internal runbooks. Would you like me to **log a ticket**?"
 
-# Dashboard Setup Configuration
-st.set_page_config(page_title="HelpDeskGenie AI Pro", layout="wide")
-
 # =====================================================================
 # 🔐 IDENTITY ACCESS PROFILE GATEWAY & LOGIN FIREWALL
 # =====================================================================
@@ -117,7 +126,7 @@ else:
 
 st.sidebar.markdown("---")
 
-# Dynamic Menu Options Matrix mapping access level permissions
+# Navigation Matrix
 if user_role == "Administrator":
     navigation_options = [
         "Chat UI Interface", 
@@ -132,43 +141,35 @@ mode = st.sidebar.selectbox("Navigation Panel View", navigation_options)
 agent = SemanticHelpDeskAgent()
 
 # =====================================================================
-# INTERFACE MAIN PAGE VIEW ROUTER
+# 🖥️ INTERFACE MAIN PAGE VIEW ROUTER
 # =====================================================================
 if mode == "Chat UI Interface":
     st.title("静态 🧞 HelpDeskGenie Chat Gateway")
     st.caption("Active Capabilities: Semantic Confluence RAG Search (Iter 1) & Self-Service Compliance Tools (Iter 2)")
     
-    # Render Message History Trace
+    # Trace history loop
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
             st.markdown(msg["content"])
             
-    # Interactive User Text Input Area Block
+    # Interactive chat bar
     if user_prompt := st.chat_input("Ask HelpDeskGenie a question..."):
         with st.chat_message("user"):
             st.markdown(user_prompt)
         st.session_state.messages.append({"role": "user", "content": user_prompt})
         
-        # Invoke Agent Inference
         bot_response = agent.process_input(user_prompt, user_id=current_user_id)
         
         with st.chat_message("assistant"):
             st.markdown(bot_response)
         st.session_state.messages.append({"role": "assistant", "content": bot_response})
+        st.rerun() # Forces page cycle redraw immediately
 
 elif mode == "IT Admin Dashboard (Stretch Goal)":
     st.title("📊 IT Operations Command Dashboard")
     df_tickets = pd.DataFrame(st.session_state.ticket_db)
+    
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Logged Tickets", len(df_tickets))
     col2.metric("Active Open Tickets", len(df_tickets[df_tickets["status"] == "Open"]))
     col3.metric("Auto-Remediation Success", len(df_tickets[df_tickets["status"] == "Resolved"]))
-    st.markdown("### Active Ticket Tracking Logs")
-    st.dataframe(df_tickets, use_container_width=True)
-    st.markdown("### System Immutable Audit Log Trail")
-    st.dataframe(pd.DataFrame(st.session_state.audit_log), use_container_width=True)
-
-elif mode == "Automated Evaluation Suite (Iteration 3)":
-    st.title("Iteration 3: Intent and Retrieval Evaluation Pipeline")
-    st.write("Measures routing precision against the defined baseline Golden Dataset.")
-    st.success("Automated Golden Dataset validation complete! Metrics report compiled:")
