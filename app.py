@@ -113,7 +113,7 @@ if mode == "Chat UI Interface":
             st.markdown(response)
         st.session_state.messages.append({"role": "assistant", "content": response})
 
-elif mode == "IT Admin Dashboard (Stretch Goal)":
+elif mode == "IT Admin Dashboard ":
     st.title("IT Operations Command Dashboard")
     df_tickets = pd.DataFrame(st.session_state.ticket_db)
     col1, col2, col3 = st.columns(3)
@@ -128,8 +128,8 @@ elif mode == "IT Admin Dashboard (Stretch Goal)":
     else:
         st.info("No system operations recorded in the ledger yet.")
 
-elif mode == "Automated Evaluation Suite (Iteration 3)":
-    st.title("Iteration 3: Intent and Retrieval Evaluation Pipeline")
+elif mode == "Automated Evaluation Suite ":
+    st.title(" Intent and Retrieval Evaluation Pipeline")
     st.write("Measures routing precision against the defined baseline Golden Dataset.")
     st.success("Automated Golden Dataset validation complete! Metrics report compiled:")
     eval_matrix = {
