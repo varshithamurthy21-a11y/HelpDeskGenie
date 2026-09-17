@@ -100,7 +100,7 @@ mode = st.sidebar.selectbox("Navigation Panel", [
 agent = SemanticHelpDeskAgent()
 
 if mode == "Chat UI Interface":
-    st.title("HelpDeskGenie Chat Gateway")
+    st.title(" 🧞 HelpDeskGenie Chat Gateway")
     if "messages" not in st.session_state:
         st.session_state.messages = [{"role": "assistant", "content": "Hello! How can I help you with your IT infrastructure today?"}]
     for msg in st.session_state.messages:
