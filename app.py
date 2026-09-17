@@ -100,7 +100,7 @@ mode = st.sidebar.selectbox("Navigation Panel", [
 agent = SemanticHelpDeskAgent()
 
 if mode == "Chat UI Interface":
-    st.title(" 🧞 HelpDeskGenie Chat Gateway")
+    st.title(" 🧞HelpDeskGenie Chat Gateway")
     if "messages" not in st.session_state:
         st.session_state.messages = [{"role": "assistant", "content": "Hello! How can I help you with your IT infrastructure today?"}]
     for msg in st.session_state.messages:
@@ -113,7 +113,7 @@ if mode == "Chat UI Interface":
             st.markdown(response)
         st.session_state.messages.append({"role": "assistant", "content": response})
 
-elif mode == "IT Admin Dashboard(Stretch goal) ":
+elif mode == "IT Admin Dashboard (Stretch Goal)":
     st.title("IT Operations Command Dashboard")
     df_tickets = pd.DataFrame(st.session_state.ticket_db)
     col1, col2, col3 = st.columns(3)
@@ -128,7 +128,7 @@ elif mode == "IT Admin Dashboard(Stretch goal) ":
     else:
         st.info("No system operations recorded in the ledger yet.")
 
-elif mode == "Automated Evaluation Suite(Iteration 3) ":
+elif mode == "Automated Evaluation Suite (Iteration 3)":
     st.title("Iteration 3: Intent and Retrieval Evaluation Pipeline")
     st.write("Measures routing precision against the defined baseline Golden Dataset.")
     st.success("Automated Golden Dataset validation complete! Metrics report compiled:")
